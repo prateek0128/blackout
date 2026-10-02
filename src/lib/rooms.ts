@@ -1,5 +1,5 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { ensureAnonymousSession, getSupabaseClient, SupabaseConfigurationError } from './supabase'
+import { ensureAnonymousSession, getSupabaseClient, SupabaseConfigurationError, SupabaseRequestError } from './supabase'
 
 export type RoomStatus = 'LOBBY' | 'STARTING' | 'IN_GAME' | 'COMPLETED' | 'EXPIRED'
 export type PlayerConnection = 'connected' | 'disconnected' | 'left'
@@ -56,14 +56,28 @@ const messages: Record<string, string> = {
   HOST_REQUIRED: 'Only the current host can start this room.',
 }
 
-function translateError(error: { message?: string; code?: string } | null): RoomActionError {
+function safeDiagnostic(value: string): string {
+  return value
+    .replace(/https?:\/\/[^\s"'<>]+/gi, '[endpoint]')
+    .replace(/\b(?:sb_publishable|sb_secret|sbp)_[A-Za-z0-9_-]+/g, '[credential]')
+    .replace(/\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, '[credential]')
+    .replace(/[\r\n\t]+/g, ' ')
+    .slice(0, 300)
+}
+
+function translateError(error: { message?: string; code?: string; status?: number } | null, operation = 'Room request'): RoomActionError {
   if (!error) return new RoomActionError('UNKNOWN', 'Something went wrong. Please try again.')
-  const match = Object.keys(messages).find(code => error.message?.includes(code))
+  const diagnostic = error as { message?: string; code?: string; status?: number }
+  const match = Object.keys(messages).find(code => diagnostic.message?.includes(code))
   if (match) return new RoomActionError(match, messages[match])
   if (error instanceof Error && error.message.includes('Supabase is not configured')) {
     return new RoomActionError('SUPABASE_NOT_CONFIGURED', error.message)
   }
-  return new RoomActionError('NETWORK', 'Could not reach the room service. Check your connection and try again.')
+  if (error instanceof SupabaseRequestError) operation = `${error.stage} request`
+  const status = diagnostic.status ? ` (HTTP ${diagnostic.status})` : ''
+  const code = diagnostic.code ? ` [${safeDiagnostic(diagnostic.code)}]` : ''
+  const detail = safeDiagnostic(diagnostic.message || 'No error message was returned.')
+  return new RoomActionError('SUPABASE_REQUEST_FAILED', `${operation}${status}${code}: ${detail}`)
 }
 
 function ensureSnapshot(value: unknown): LobbySnapshot {
@@ -77,14 +91,11 @@ async function rpcSnapshot(name: string, args: Record<string, unknown> = {}): Pr
   try {
     await ensureAnonymousSession()
     const { data, error } = await getSupabaseClient().rpc(name, args)
-    if (error) throw translateError(error)
+    if (error) throw translateError(error, `${name} RPC`)
     return ensureSnapshot(data)
   } catch (error) {
     if (error instanceof RoomActionError) throw error
     if (error instanceof SupabaseConfigurationError) throw translateError(error)
-    if (error instanceof Error && error.message.startsWith('Could not ')) {
-      throw new RoomActionError('AUTH', error.message)
-    }
     throw translateError(error instanceof Error ? error : null)
   }
 }
@@ -106,9 +117,6 @@ export async function getMyLobby(): Promise<LobbySnapshot | null> {
   } catch (error) {
     if (error instanceof RoomActionError) throw error
     if (error instanceof SupabaseConfigurationError) throw translateError(error)
-    if (error instanceof Error && error.message.startsWith('Could not ')) {
-      throw new RoomActionError('AUTH', error.message)
-    }
     throw translateError(error instanceof Error ? error : null)
   }
 }
@@ -125,7 +133,7 @@ export async function startRoom(roomId: string): Promise<string> {
   try {
     await ensureAnonymousSession()
     const { data, error } = await getSupabaseClient().rpc('start_room', { p_room_id: roomId })
-    if (error) throw translateError(error)
+    if (error) throw translateError(error, 'start_room RPC')
     if (!data || typeof data !== 'object' || !('game' in data) || typeof data.game !== 'object' || !data.game || !('id' in data.game) || typeof data.game.id !== 'string') {
       throw new RoomActionError('INVALID_RESPONSE', 'The game service returned an invalid session. Please refresh.')
     }
@@ -133,9 +141,6 @@ export async function startRoom(roomId: string): Promise<string> {
   } catch (error) {
     if (error instanceof RoomActionError) throw error
     if (error instanceof SupabaseConfigurationError) throw translateError(error)
-    if (error instanceof Error && error.message.startsWith('Could not ')) {
-      throw new RoomActionError('AUTH', error.message)
-    }
     throw translateError(error instanceof Error ? error : null)
   }
 }

@@ -9,6 +9,20 @@ export class SupabaseConfigurationError extends Error {
   }
 }
 
+export class SupabaseRequestError extends Error {
+  readonly stage: 'session' | 'anonymous sign-in'
+  readonly status?: number
+  readonly code?: string
+
+  constructor(stage: 'session' | 'anonymous sign-in', error: { message?: string; status?: number; code?: string }) {
+    super(error.message || 'The request failed without an error message.')
+    this.name = 'SupabaseRequestError'
+    this.stage = stage
+    this.status = error.status
+    this.code = error.code
+  }
+}
+
 export function getSupabaseClient(): SupabaseClient {
   if (client) return client
   const url = import.meta.env.VITE_SUPABASE_URL?.trim()
@@ -28,12 +42,12 @@ export function getSupabaseClient(): SupabaseClient {
 export async function ensureAnonymousSession() {
   const supabase = getSupabaseClient()
   const { data, error } = await supabase.auth.getSession()
-  if (error) throw new Error('Could not restore your player session. Refresh and try again.')
+  if (error) throw new SupabaseRequestError('session', error)
   if (data.session?.user) return data.session
 
   const { data: signedIn, error: signInError } = await supabase.auth.signInAnonymously()
   if (signInError || !signedIn.session) {
-    throw new Error('Could not create an anonymous player session. Check that Anonymous Sign-Ins are enabled in Supabase.')
+    throw new SupabaseRequestError('anonymous sign-in', signInError ?? { message: 'Supabase returned no session.' })
   }
   return signedIn.session
 }
