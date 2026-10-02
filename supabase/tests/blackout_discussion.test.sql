@@ -137,6 +137,10 @@ select lives_ok($$select public.blackout_investigate((select game_id from phase3
 update public.blackout_games set state_deadline_at=clock_timestamp()-interval '1 second' where id=(select game_id from phase3c_members where game_tag='clear3' limit 1);
 select is((public.get_my_game()->'game'->>'state'),'VOTING','three-player discussion advances to vote');
 select set_config('request.jwt.claim.sub',(select user_id::text from phase3c_members where game_tag='clear3' and seat=0),true);
+update public.blackout_players set last_seen_at=clock_timestamp()-interval '60 seconds'
+where id=(select player_id from phase3c_members where game_tag='clear3' and seat=0);
+select throws_ok($$select public.blackout_cast_vote((select game_id from phase3c_members where game_tag='clear3' limit 1),(select player_id from phase3c_members where game_tag='clear3' and seat=1))$$,'P0001','PLAYER_DISCONNECTED','stale player cannot submit a vote');
+select lives_ok($$select public.get_my_game()$$,'get_my_game restores voting access after reconnect');
 select lives_ok($$select public.blackout_cast_vote((select game_id from phase3c_members where game_tag='clear3' limit 1),(select player_id from phase3c_members where game_tag='clear3' and seat=1))$$,'first vote in clear-result game is accepted');
 select set_config('request.jwt.claim.sub',(select user_id::text from phase3c_members where game_tag='clear3' and seat=1),true);
 select lives_ok($$select public.blackout_cast_vote((select game_id from phase3c_members where game_tag='clear3' limit 1),(select player_id from phase3c_members where game_tag='clear3' and seat=0))$$,'second vote in clear-result game is accepted');

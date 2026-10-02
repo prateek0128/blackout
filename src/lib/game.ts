@@ -118,12 +118,13 @@ export class GameActionError extends Error {
 
 function gameError(error: { message?: string; code?: string } | null): GameActionError {
   if (!error) return new GameActionError('UNKNOWN', 'The game service could not be reached.')
-  const codes = ['AUTH_REQUIRED', 'GAME_MEMBERSHIP_REQUIRED', 'GAME_NOT_FOUND', 'GAME_NOT_ACTIVE', 'GAME_TIMER_EXPIRED', 'PLAYER_INACTIVE', 'ROLE_REQUIRED', 'ROLE_ASSIGNMENT_REQUIRED', 'INVALID_ACTION', 'INVALID_SECTOR', 'SECTOR_REQUIRED', 'SECTOR_NOT_VALID_FOR_ACTION', 'ACTION_COOLDOWN', 'DISCUSSION_NOT_ACTIVE', 'VOTING_NOT_ACTIVE', 'SELF_ACCUSATION_NOT_ALLOWED', 'SELF_VOTE_NOT_ALLOWED', 'INVALID_TARGET', 'EVIDENCE_NOT_ACCESSIBLE', 'ALREADY_VOTED', 'INVALID_ESCAPE_ACTION', 'ESCAPE_NOT_ACTIVE', 'ESCAPE_DEADLINE_EXPIRED', 'ESCAPE_STEP_NOT_AVAILABLE', 'ESCAPE_ACTION_COOLDOWN', 'ESCAPE_STATE_MISSING', 'GAME_NOT_COMPLETE', 'HOST_REQUIRED']
+  const codes = ['AUTH_REQUIRED', 'GAME_MEMBERSHIP_REQUIRED', 'GAME_NOT_FOUND', 'GAME_NOT_ACTIVE', 'GAME_TIMER_EXPIRED', 'PLAYER_DISCONNECTED', 'PLAYER_INACTIVE', 'ROLE_REQUIRED', 'ROLE_ASSIGNMENT_REQUIRED', 'INVALID_ACTION', 'INVALID_SECTOR', 'SECTOR_REQUIRED', 'SECTOR_NOT_VALID_FOR_ACTION', 'ACTION_COOLDOWN', 'DISCUSSION_NOT_ACTIVE', 'VOTING_NOT_ACTIVE', 'SELF_ACCUSATION_NOT_ALLOWED', 'SELF_VOTE_NOT_ALLOWED', 'INVALID_TARGET', 'EVIDENCE_NOT_ACCESSIBLE', 'ALREADY_VOTED', 'INVALID_ESCAPE_ACTION', 'ESCAPE_NOT_ACTIVE', 'ESCAPE_DEADLINE_EXPIRED', 'ESCAPE_STEP_NOT_AVAILABLE', 'ESCAPE_ACTION_COOLDOWN', 'ESCAPE_STATE_MISSING', 'GAME_NOT_COMPLETE', 'HOST_REQUIRED']
   const code = codes.find(candidate => error.message?.includes(candidate))
   if (code === 'AUTH_REQUIRED') return new GameActionError(code, 'Your player session expired. Refresh and try again.')
   if (code === 'GAME_MEMBERSHIP_REQUIRED' || code === 'GAME_NOT_FOUND') return new GameActionError(code, 'No active game is linked to this player session.')
   if (code === 'GAME_NOT_ACTIVE') return new GameActionError(code, 'Actions are available during the active phase only.')
   if (code === 'GAME_TIMER_EXPIRED') return new GameActionError(code, 'The five-minute operation window has expired.')
+  if (code === 'PLAYER_DISCONNECTED') return new GameActionError(code, 'Your game link went idle. Reconnect to restore your latest server state, then try again.')
   if (code === 'PLAYER_INACTIVE') return new GameActionError(code, 'This operator cannot perform actions right now.')
   if (code === 'ROLE_REQUIRED') return new GameActionError(code, 'That action is not available to your assigned role.')
   if (code === 'ACTION_COOLDOWN') return new GameActionError(code, 'That action is cooling down. Try again when its timer clears.')

@@ -69,6 +69,10 @@ select is(jsonb_array_length(public.get_my_game()->'escape'->'my_available_actio
 select ok(not ((public.get_my_game()->'players'->0) ? 'secret_role'),'shared roster does not expose another player role before results');
 select throws_ok($$select public.blackout_investigate((select game_id from phase3d_context),'POWER')$$,'P0001','GAME_NOT_ACTIVE','normal facility actions stop during the escape phase');
 select set_config('request.jwt.claim.sub','31000000-0000-4000-8000-000000000601',true);
+update public.blackout_players set last_seen_at=clock_timestamp()-interval '60 seconds'
+where id=(select saboteur_id from phase3d_context);
+select throws_ok($$select public.blackout_escape_action((select game_id from phase3d_context),'JAM_ESCAPE')$$,'P0001','PLAYER_DISCONNECTED','stale Saboteur cannot interfere with escape progress');
+select lives_ok($$select public.get_my_game()$$,'game snapshot reconnects the Saboteur before escape actions');
 select throws_ok($$select public.blackout_escape_action((select game_id from phase3d_context),'LOCATE_ESCAPE_ROUTE')$$,'P0001','ROLE_REQUIRED','Saboteur cannot perform a crew escape action');
 select set_config('request.jwt.claim.sub','31000000-0000-4000-8000-000000000604',true);
 select throws_ok($$select public.blackout_escape_action((select game_id from phase3d_context),'LOCATE_ESCAPE_ROUTE')$$,'P0001','GAME_MEMBERSHIP_REQUIRED','nonmember cannot act on escape state');
@@ -100,8 +104,17 @@ select set_config('request.jwt.claim.sub','31000000-0000-4000-8000-000000000604'
 set local role authenticated;
 select is((select count(*)::integer from public.blackout_results where game_id=(select game_id from phase3d_context)),0,'nonmember cannot read result rows under RLS');
 reset role;
-select throws_ok($$select public.blackout_restart_game((select game_id from phase3d_context))$$,'P0001','HOST_REQUIRED','nonhost cannot restart the room');
+select set_config('request.jwt.claim.sub','31000000-0000-4000-8000-000000000602',true);
+select throws_ok($$select public.blackout_restart_game((select game_id from phase3d_context))$$,'P0001','HOST_REQUIRED','nonhost member cannot restart the room');
+select set_config('request.jwt.claim.sub','31000000-0000-4000-8000-000000000604',true);
+select throws_ok($$select public.blackout_restart_game((select game_id from phase3d_context))$$,'P0001','GAME_MEMBERSHIP_REQUIRED','nonmember cannot request a replay');
 select set_config('request.jwt.claim.sub','31000000-0000-4000-8000-000000000601',true);
+update public.blackout_players bp set last_seen_at=clock_timestamp()-interval '60 seconds'
+from public.room_players rp
+where bp.room_player_id=rp.id and bp.game_id=(select game_id from phase3d_context)
+  and rp.auth_user_id='31000000-0000-4000-8000-000000000601';
+select throws_ok($$select public.blackout_restart_game((select game_id from phase3d_context))$$,'P0001','PLAYER_DISCONNECTED','stale host cannot restart a resolved game');
+select lives_ok($$select public.get_my_game()$$,'host game recovery refreshes liveness before replay');
 select lives_ok($$select public.blackout_restart_game((select game_id from phase3d_context))$$,'host can restart from resolved results');
 select is((select status from public.rooms where id=(select room_id from phase3d_context)),'LOBBY','replay returns same room to the lobby');
 select is((select count(*)::integer from public.blackout_games where room_id=(select room_id from phase3d_context)),1,'previous game remains as durable history');

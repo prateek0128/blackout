@@ -138,6 +138,13 @@ select is((select power::integer from public.blackout_games where id = (select g
 select is((select security::integer from public.blackout_games where id = (select game_id from phase3b_games where player_count = 6)), 100, 'Security is clamped at one hundred');
 select is((select facility_integrity::integer from public.blackout_games where id = (select game_id from phase3b_games where player_count = 6)), 0, 'Integrity is clamped at zero');
 select ok((select power between 0 and 100 and security between 0 and 100 and facility_integrity between 0 and 100 from public.blackout_games where id = (select game_id from phase3b_games where player_count = 6)), 'all shared facility values remain within their constraints');
+update public.blackout_players set last_seen_at = clock_timestamp() - interval '60 seconds'
+where id = (select player_id from phase3b_roles where role_name = 'SABOTEUR' limit 1);
+select throws_ok($$select public.blackout_disrupt_power((select game_id from phase3b_games where player_count = 6))$$, 'P0001', 'PLAYER_DISCONNECTED', 'stale Saboteur cannot mutate facility state');
+select lives_ok($$select public.get_my_game()$$, 'game recovery heartbeat reconnects the stale player');
+update public.blackout_action_cooldowns set next_available_at = clock_timestamp() - interval '1 second'
+where game_id = (select game_id from phase3b_games where player_count = 6);
+select lives_ok($$select public.blackout_disrupt_power((select game_id from phase3b_games where player_count = 6))$$, 'recovered Saboteur can act again');
 
 select * from finish();
 rollback;

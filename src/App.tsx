@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { createRoom as createRoomRequest, joinRoom as joinRoomRequest } from './lib/rooms'
 import { useLobby } from './lib/useLobby'
 import { useBlackoutGame } from './lib/useBlackoutGame'
@@ -9,7 +9,7 @@ import { accusePlayer, castGameVote, performGameAction, performEscapeAction, res
 type Tone = 'green' | 'amber' | 'red' | 'blue' | 'muted'
 type MetricProps = { label: string; value: string; percent: number; tone?: Tone; detail?: string }
 
-const routeNames = ['/','/create','/join','/lobby','/role','/facility','/game','/vote','/blackout','/escape','/results']
+const routeNames = ['/','/create','/join','/lobby','/role','/facility','/game','/blackout','/escape','/results']
 
 function Mark({ small = false }: { small?: boolean }) {
   return <span className={`brand-mark${small ? ' brand-mark--small' : ''}`} aria-hidden="true"><i /><i /><i /><i /></span>
@@ -143,8 +143,8 @@ function FormPage({ mode }: { mode: 'create' | 'join' }) {
       setFormError(error instanceof Error ? error.message : 'The room request could not be completed.')
     } finally { setWorking(false) }
   }
-  return <main className="page-wrap form-layout"><div className="form-aside"><Eyebrow icon>SECURE ACCESS TERMINAL</Eyebrow><h1>{isCreate ? <>START A<br /><span>NEW SESSION</span></> : <>REJOIN THE<br /><span>OPERATION</span></>}</h1><p>{isCreate ? 'Establish a facility channel. Invite your crew when your room is ready.' : 'Enter the room code shared by your host to connect to the facility.'}</p><div className="terminal-art"><div className="terminal-circle"><span>BLACKOUT</span><b>⌁</b><small>FACILITY NETWORK</small></div><span className="terminal-caption">ENCRYPTED CHANNEL <i /> STANDING BY</span></div><div className="aside-code">AUTHENTICATION / GUEST SESSION<br />PROTOCOL 0x04 // PREVIEW MODE</div></div>
-    <Panel className="form-panel"><Link to="/" className="back-link"><Icon name="back" /> BACK TO BRIEFING</Link><div className="form-heading"><Badge tone="blue" dot>PHASE 01 / UI PREVIEW</Badge><h2>{isCreate ? 'Create a room' : 'Join a room'}</h2><p>{isCreate ? 'Your display name is how your crew will know you.' : 'Your crew is waiting. Connect with a room code.'}</p></div>
+  return <main className="page-wrap form-layout"><div className="form-aside"><Eyebrow icon>SECURE ACCESS TERMINAL</Eyebrow><h1>{isCreate ? <>START A<br /><span>NEW SESSION</span></> : <>REJOIN THE<br /><span>OPERATION</span></>}</h1><p>{isCreate ? 'Establish a facility channel. Invite your crew when your room is ready.' : 'Enter the room code shared by your host to connect to the facility.'}</p><div className="terminal-art"><div className="terminal-circle"><span>BLACKOUT</span><b>⌁</b><small>FACILITY NETWORK</small></div><span className="terminal-caption">ENCRYPTED CHANNEL <i /> STANDING BY</span></div><div className="aside-code">AUTHENTICATION / GUEST SESSION<br />PROTOCOL 0x04 // READY</div></div>
+    <Panel className="form-panel"><Link to="/" className="back-link"><Icon name="back" /> BACK TO BRIEFING</Link><div className="form-heading"><Badge tone="blue" dot>ROOM ACCESS / READY</Badge><h2>{isCreate ? 'Create a room' : 'Join a room'}</h2><p>{isCreate ? 'Your display name is how your crew will know you.' : 'Your crew is waiting. Connect with a room code.'}</p></div>
       <form onSubmit={submit} noValidate>
         <label className="field-label" htmlFor="display-name">DISPLAY NAME <span>REQUIRED</span></label>
         <input id="display-name" value={name} onChange={e => { setName(e.target.value.slice(0, 18)); setFormError('') }} placeholder="e.g. SIGNAL_04" autoComplete="nickname" aria-invalid={attempted && !validName} aria-describedby="name-help name-error" />
@@ -159,19 +159,19 @@ function FormPage({ mode }: { mode: 'create' | 'join' }) {
   </main>
 }
 
-function DemoNotice({ children = 'STATIC DESIGN PREVIEW · NO LIVE GAME DATA' }: { children?: ReactNode }) {
-  return <div className="demo-notice"><span className="demo-square">i</span><span>{children}</span><Badge tone="amber">DESIGN STATE</Badge></div>
+function DemoNotice({ children = 'LIVE SERVER STATE · PRIVATE PLAYER CHANNEL' }: { children?: ReactNode }) {
+  return <div className="demo-notice"><span className="demo-square">i</span><span>{children}</span></div>
 }
 
 function GameNav({ active = 'lobby', live = false }: { active?: string; live?: boolean }) {
-  return <aside className="game-nav"><Brand compact /><div className="game-nav-tag">FACILITY LINK <span><i /></span></div><nav aria-label="Game preview navigation">{routeNames.slice(3).map(path => {
+  return <aside className="game-nav"><Brand compact /><div className="game-nav-tag">FACILITY LINK <span><i /></span></div><nav aria-label="Operation navigation">{routeNames.slice(3).map(path => {
     const name = path.slice(1).toUpperCase()
     return <NavLink key={path} to={path} className={({ isActive }) => `game-nav-item${(isActive || active === path.slice(1)) ? ' is-active' : ''}`}><span className="nav-index">0{routeNames.indexOf(path) - 2}</span>{name}<Icon name="chevron" /></NavLink>
   })}</nav><div className="nav-bottom"><span className="nav-operator"><b>OP</b><span><strong>OPERATOR</strong><small>{live ? 'ANONYMOUS SESSION' : 'LOCAL PREVIEW'}</small></span></span><Badge tone={live ? 'green' : 'muted'} dot>{live ? 'SERVER LINK' : 'NOT CONNECTED'}</Badge></div></aside>
 }
 
 function GameLayout({ children, active, live = false }: { children: ReactNode; active?: string; live?: boolean }) {
-  return <main className="game-layout page-wrap"><GameNav active={active} live={live} /><div className="game-content">{live ? <DemoNotice>LIVE SERVER STATE · PRIVATE PLAYER CHANNEL</DemoNotice> : <DemoNotice />}<div className="game-content-inner">{children}</div></div></main>
+  return <main className="game-layout page-wrap"><GameNav active={active} live={live} /><div className="game-content">{live && <DemoNotice />}<div className="game-content-inner">{children}</div></div></main>
 }
 
 function PlayerSeat({ name, role, host = false, state = 'AWAITING SIGNAL', tone = 'muted' }: { name: string; role?: string; host?: boolean; state?: string; tone?: Tone }) {
@@ -182,8 +182,8 @@ function Lobby() {
   const navigate = useNavigate()
   const lobby = useLobby(() => navigate('/role', { replace: true }))
   const [copied, setCopied] = useState(false)
-  if (lobby.loading) return <GameLayout active="lobby"><div className="lobby-state"><div className="loading-orbit" /><h1>Establishing room link</h1><p>Restoring your anonymous player session…</p></div></GameLayout>
-  if (!lobby.snapshot) return <GameLayout active="lobby"><div className="lobby-state lobby-state--error"><Badge tone="red" dot>ROOM LINK UNAVAILABLE</Badge><h1>Connection lost</h1><p>{lobby.error || 'This browser session is not connected to a room.'}</p><div className="state-actions"><Button to="/create">CREATE A ROOM <Icon name="arrow" /></Button><Button to="/join" variant="secondary">JOIN WITH CODE</Button></div></div></GameLayout>
+  if (lobby.loading) return <GameLayout active="lobby" live><div className="lobby-state"><div className="loading-orbit" /><h1>Establishing room link</h1><p>Restoring your anonymous player session…</p></div></GameLayout>
+  if (!lobby.snapshot) return <GameLayout active="lobby" live><div className="lobby-state lobby-state--error"><Badge tone="red" dot>ROOM LINK UNAVAILABLE</Badge><h1>Connection lost</h1><p>{lobby.error || 'This browser session is not connected to a room.'}</p><div className="state-actions"><Button to="/create">CREATE A ROOM <Icon name="arrow" /></Button><Button to="/join" variant="secondary">JOIN WITH CODE</Button></div></div></GameLayout>
   const { snapshot } = lobby
   const current = snapshot.players.find(player => player.id === snapshot.current_player_id)
   const connected = snapshot.players.filter(player => player.connection_state === 'connected')
@@ -199,7 +199,7 @@ function Lobby() {
     const gameId = await lobby.start()
     if (gameId) navigate('/role')
   }
-  return <GameLayout active="lobby"><SectionTitle eyebrow="ROOM // LOBBY" title="Crew assembly" right={<Badge tone={isStarting ? 'amber' : 'green'} dot>{isStarting ? 'STARTING' : 'LOBBY OPEN'}</Badge>}>Your operation begins when your crew is ready.</SectionTitle>
+  return <GameLayout active="lobby" live><SectionTitle eyebrow="ROOM // LOBBY" title="Crew assembly" right={<Badge tone={isStarting ? 'amber' : 'green'} dot>{isStarting ? 'STARTING' : 'LOBBY OPEN'}</Badge>}>Your operation begins when your crew is ready.</SectionTitle>
     {lobby.error && <div className="action-error lobby-error" role="alert"><Icon name="cross" /><span>{lobby.error}</span></div>}
     {lobby.notice && <div className="action-notice" role="status"><span className="badge-dot" />{lobby.notice}<button aria-label="Dismiss message" onClick={() => lobby.setNotice('')}><Icon name="cross" /></button></div>}
     {isStarting && <div className="starting-banner"><Badge tone="amber" dot>SERVER CONFIRMED</Badge><span>Operation launch is being synchronized across the crew.</span></div>}
@@ -243,7 +243,7 @@ function useGameRoute() {
 }
 
 function GameLoadingState({ error }: { error?: string }) {
-  return <GameLayout active="game"><div className={'lobby-state' + (error ? ' lobby-state--error' : '')}>
+  return <GameLayout active="game" live><div className={'lobby-state' + (error ? ' lobby-state--error' : '')}>
     {error ? <><Badge tone="red" dot>GAME LINK UNAVAILABLE</Badge><h1>Operation not found</h1><p>{error}</p><div className="state-actions"><Button to="/lobby">RETURN TO LOBBY</Button></div></> : <><div className="loading-orbit" /><h1>Securing personnel channel</h1><p>Recovering your private assignment and current facility state…</p></>}
   </div></GameLayout>
 }
@@ -256,7 +256,7 @@ function RoleReveal() {
   return <GameLayout active="role" live><div className="role-screen live-role-screen"><Eyebrow icon>PERSONNEL FILE // ENCRYPTED</Eyebrow>
     <div className="role-classified"><Icon name="lock" /> PRIVATE TO YOU <Badge tone={game.connection === 'connected' ? 'green' : 'amber'} dot>{game.connection === 'connected' ? 'SECURE LINK' : 'RECONNECTING'}</Badge></div>
     <div className={'role-card live-role-card' + (saboteur ? ' live-role-card--saboteur' : '')}><div className="role-sigil"><div className="sigil-ring"><span>{saboteur ? '!' : '◈'}</span><i /><i /><i /></div><small>IDENTITY SEALED</small></div>
-      <div className="role-text"><Badge tone={role.tone} dot>{role.tag}</Badge><p className="role-descriptor">{role.descriptor}</p><h1>YOUR ROLE<br /><span>{saboteur ? 'SABOTEUR' : 'CREW'}</span></h1><p>{role.copy}</p>
+        <div className="role-text"><Badge tone={role.tone} dot>{role.tag}</Badge><p className="role-descriptor">{role.descriptor}</p><h1>YOUR ROLE<br /><span>{game.snapshot.my_player.secret_role}</span></h1><p>{role.copy}</p>
         <Panel className="objective-panel" label="PRIVATE OBJECTIVE"><p>{game.snapshot.my_player.objective}</p></Panel>
         <div className="role-transition"><span><i className="inline-led" /> TEAM BRIEFING STARTS IN</span><strong>{formatClock(game.getRemainingMs('ROLE_REVEAL'))}</strong></div>
       </div></div>
@@ -279,7 +279,7 @@ function FacilityIntro() {
 }
 
 function FacilityMap() {
-  return <div className="map-panel"><div className="map-panel-head"><span>FACILITY SCHEMATIC <b> / </b> SUBLEVEL 04</span><Badge tone="amber" dot>SCHEMATIC ONLY</Badge></div><div className="map-canvas"><div className="map-grid" /><svg viewBox="0 0 720 420" role="img" aria-label="Facility schematic showing the compact facility layout"><path className="map-outline" d="M85 73h188v60h85V73h175v70h88v206H494v36H275v-48h-92v48H85v-97H47V134h38z"/><path className="map-walls" d="M273 73v131h85m0-71h116v82h62M85 134h111v140M183 274h160v-70m0 70h151v65m-151-65V328M474 215v59h70m-274-70h85"/><path className="map-route" d="M136 178h91v-65h91m0 0v98h119v102h104"/><g className="map-rooms"><text x="110" y="112">MEDICAL</text><text x="281" y="102">SECURITY</text><text x="444" y="110">OPERATIONS</text><text x="297" y="246">POWER CORE</text><text x="101" y="315">MAINTENANCE</text><text x="457" y="323">LOADING BAY</text></g><g className="map-nodes"><circle cx="139" cy="178" r="6"/><circle cx="236" cy="138" r="6"/><circle cx="352" cy="202" r="8" /><circle cx="482" cy="273" r="7" /><circle cx="213" cy="315" r="6"/></g></svg><span className="map-label-chip chip-reactor">POWER RELAY</span><span className="map-label-chip chip-bay">MAINTENANCE LINK</span></div><div className="map-legend"><span><i className="legend-green" /> STABLE</span><span><i className="legend-amber" /> DEGRADED</span><span><i className="legend-red" /> CRITICAL</span><span className="map-scale">MAP NOT TO SCALE</span></div></div>
+  return <div className="map-panel"><div className="map-panel-head"><span>FACILITY SCHEMATIC <b> / </b> SUBLEVEL 04</span><Badge tone="amber" dot>FACILITY LAYOUT</Badge></div><div className="map-canvas"><div className="map-grid" /><svg viewBox="0 0 720 420" role="img" aria-label="Facility schematic showing the compact facility layout"><path className="map-outline" d="M85 73h188v60h85V73h175v70h88v206H494v36H275v-48h-92v48H85v-97H47V134h38z"/><path className="map-walls" d="M273 73v131h85m0-71h116v82h62M85 134h111v140M183 274h160v-70m0 70h151v65m-151-65V328M474 215v59h70m-274-70h85"/><path className="map-route" d="M136 178h91v-65h91m0 0v98h119v102h104"/><g className="map-rooms"><text x="110" y="112">MEDICAL</text><text x="281" y="102">SECURITY</text><text x="444" y="110">OPERATIONS</text><text x="297" y="246">POWER CORE</text><text x="101" y="315">MAINTENANCE</text><text x="457" y="323">LOADING BAY</text></g><g className="map-nodes"><circle cx="139" cy="178" r="6"/><circle cx="236" cy="138" r="6"/><circle cx="352" cy="202" r="8" /><circle cx="482" cy="273" r="7" /><circle cx="213" cy="315" r="6"/></g></svg><span className="map-label-chip chip-reactor">POWER RELAY</span><span className="map-label-chip chip-bay">MAINTENANCE LINK</span></div><div className="map-legend"><span><i className="legend-green" /> STABLE</span><span><i className="legend-amber" /> DEGRADED</span><span><i className="legend-red" /> CRITICAL</span><span className="map-scale">MAP NOT TO SCALE</span></div></div>
 }
 
 function Game() {
@@ -413,11 +413,6 @@ function DiscussionRoom({ game }: { game: ReturnType<typeof useBlackoutGame> }) 
 function MapPanel() { return <MapComponent /> }
 function MapComponent() { return <div className="map-wrap"><FacilityMap /></div> }
 
-function Vote() {
-  const [selected, setSelected] = useState('')
-  return <GameLayout active="vote"><SectionTitle eyebrow="CREW ASSEMBLY // PRIVATE BALLOTS" title="Discussion & vote" right={<GameTimer time="00:42" />}>Share what you know. Decide who you trust.</SectionTitle><div className="vote-grid"><div className="vote-main"><Panel label="CAST YOUR VOTE" className="vote-panel"><div className="vote-warning"><span>!</span><p><strong>One vote. No takebacks.</strong><small>Your ballot is private until the vote resolves.</small></p><Badge tone="amber">PREVIEW</Badge></div><div className="vote-options">{['OPERATOR 01','OPERATOR 02','OPERATOR 03','ABSTAIN'].map((person, i) => <button type="button" key={person} onClick={() => setSelected(person)} className={`vote-option${selected === person ? ' is-selected' : ''}`}><span className="vote-avatar">{i === 3 ? '—' : `0${i + 1}`}</span><span><strong>{person}</strong><small>{i === 3 ? 'WITHHOLD YOUR VOTE' : 'PLAYER IDENTITY HIDDEN'}</small></span><span className="radio-check" /></button>)}</div><Button disabled={!selected} className="full-width">{selected ? `CONFIRM: ${selected}` : 'SELECT AN OPERATOR'} <Icon name="arrow" /></Button><p className="disabled-hint">Ballot controls are visual only in this preview.</p></Panel><Panel className="discussion-panel" label="DISCUSSION PROMPT"><strong>What did you see?</strong><p>Compare clues, verify timelines, and watch for details that don’t fit.</p><div className="prompt-chips"><Badge tone="muted">WHO HAD ACCESS?</Badge><Badge tone="muted">WHAT CHANGED?</Badge><Badge tone="muted">WHO BENEFITS?</Badge></div></Panel></div><div className="vote-side"><Panel label="DISCUSSION WINDOW" className="discussion-timer"><GameTimer time="00:42" /><span>STATIC DESIGN STATE · TIMER NOT RUNNING</span><div className="meter"><span className="meter-fill meter-fill--amber" style={{ width: '42%' }} /></div></Panel><Panel label="EVIDENCE BOARD" className="evidence-board"><div className="evidence-note"><span>01</span><p><strong>ACCESS LOG GAP</strong><small>One record is missing from the security archive.</small></p><Badge tone="blue">PRIVATE</Badge></div><div className="evidence-note"><span>02</span><p><strong>POWER ROUTE</strong><small>Manual override found near the reactor.</small></p><Badge tone="muted">UNVERIFIED</Badge></div><div className="evidence-note evidence-note--empty"><span>+</span><p><strong>MORE EVIDENCE</strong><small>Clues appear here during a live game.</small></p></div></Panel><Panel label="VOTE TALLY" className="vote-tally"><strong>— <small>VOTES CAST</small></strong><span>RESULTS LOCKED UNTIL EVERYONE HAS VOTED</span></Panel></div></div></GameLayout>
-}
-
 const escapeActionLabels: Record<EscapeActionType, { title: string; detail: string }> = {
   LOCATE_ESCAPE_ROUTE: { title: 'LOCATE ESCAPE ROUTE', detail: 'Scout identifies the maintenance corridor.' },
   UNLOCK_EMERGENCY_ROUTE: { title: 'UNLOCK EMERGENCY ROUTE', detail: 'Hacker releases the route locks.' },
@@ -544,7 +539,7 @@ export default function App() {
     <Route path="/role" element={<PageTransition><RoleReveal /></PageTransition>} />
     <Route path="/facility" element={<PageTransition><FacilityIntro /></PageTransition>} />
     <Route path="/game" element={<PageTransition><Game /></PageTransition>} />
-    <Route path="/vote" element={<PageTransition><Vote /></PageTransition>} />
+    <Route path="/vote" element={<Navigate to="/game" replace />} />
     <Route path="/blackout" element={<PageTransition><Blackout /></PageTransition>} />
     <Route path="/escape" element={<PageTransition><Escape /></PageTransition>} />
     <Route path="/results" element={<PageTransition><Results /></PageTransition>} />
